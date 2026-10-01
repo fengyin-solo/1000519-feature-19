@@ -5,11 +5,13 @@
 """
 from __future__ import annotations
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.routers import ROUTERS
+from app.services.workbench_errors import WorkbenchError
 from app.store import store
 
 app = FastAPI(title="地质勘探数据管理平台", version="1.0.0")
@@ -24,6 +26,12 @@ app.add_middleware(
 
 for module in ROUTERS:
     app.include_router(module.router)
+
+
+@app.exception_handler(WorkbenchError)
+def handle_workbench_error(_: Request, exc: WorkbenchError) -> JSONResponse:
+    """工作台业务异常统一转成 HTTP 错误，detail 即面向操作员的可读说明。"""
+    return JSONResponse(status_code=exc.status_code, content={"ok": False, "detail": str(exc)})
 
 
 @app.get("/api/health")
